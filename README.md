@@ -1,9 +1,72 @@
-# segnalazioni-ai
+# segnalazioni-ai — the routing service behind SegnalaMi
+
+**Claude Impact Lab Milano · 3 October 2026**
 
 Routes a citizen's free-text report about Milan to the body actually responsible for it.
 
 Receive text (and photos) → classify and extract with Claude → pick the competent body →
 either transmit it, or hand the citizen a ready-to-send packet.
+
+This is the **back half** of SegnalaMi. The chat people actually use — voice, photo,
+geolocation, the whole citizen experience — lives in
+**[FlXZ22/impact-lab](https://github.com/FlXZ22/impact-lab)**, which is also where the
+Impact Lab submission README and the demo script live. This service has no UI; it answers
+one HTTP call and knows who is responsible for what.
+
+```
+impact-lab (Node, the chat)                segnalazioni-ai (Java, this repo)
+  POST /api/reports                          POST /api/v1/reports
+    saves the report  ─── best-effort ───▶     classify · route · dispatch
+    renders the card  ◀────────────────────    { analysis, nextStep }
+```
+
+The chat sets `ROUTING_URL` to point here. The call is best-effort in the strict sense:
+if this service is slow, down or absent, the citizen's report still saves and the chat
+simply shows no routing card. Nothing about the capture half depends on this one being up.
+
+## Demo
+
+Three screencasts of the two services running together. Each is the same pipeline —
+one sentence in, a responsible body out — reaching a different answer.
+
+### 1 · A broken lift at M3 Lodi → ATM
+
+*"L'ascensore della stazione M3 Lodi è rotto da giorni, in carrozzina non riesco a uscire"*
+
+![Routing a broken station lift to ATM](docs/demo-1-atm-lift.gif)
+
+Saved first, then routed: **ATM — Azienda Trasporti Milanesi**, their infoline hours and
+stated 10-day response, and an **Open the form** button. Nobody picked a category, an
+address or a recipient. Note that a station name alone was location enough — ATM indexes
+its assets by stop, not by street address.
+
+[Full video](docs/demo-1-atm-lift.mp4) · 27s
+
+### 2 · An exposed cable → 112, and nothing else
+
+*"C'è un cavo scoperto che penzola sulla rampa, rischio folgorazione"*
+
+![An emergency short-circuiting to 112](docs/demo-2-emergency.gif)
+
+The card turns red before any body is chosen. The text says plainly that this service
+does not forward urgent reports and nobody is reading it right now. A queue is the wrong
+place for that report.
+
+[Full video](docs/demo-2-emergency.mp4) · 20s
+
+### 3 · Waste blocking a pavement → Amsa, one tap to dial
+
+*"Ingombranti e cassonetti abbandonati bloccano il marciapiede in Via Paolo Sarpi 12"*
+
+![Routing abandoned waste to Amsa](docs/demo-3-amsa-waste.gif)
+
+Same pipeline, different competence and a different channel: Amsa, 24 hours a day, and a
+`tel:` link rather than a form.
+
+[Full video](docs/demo-3-amsa-waste.mp4) · 19s
+
+In all three the last line is the same — *"Nothing has been sent: this step is yours to
+take."* That is the honest part, and the next section is why.
 
 > ### 📄 [docs/municipality-handoff.md](docs/municipality-handoff.md) — the proposal to the Comune
 >
@@ -91,10 +154,30 @@ SOS_AFFITTI_EMAIL=test@localhost mvn spring-boot:run -Dspring-boot.run.profiles=
 # then read it at http://localhost:8025
 ```
 
+**Port note:** this service defaults to 8080, which is often already taken. Pass
+`-Dspring-boot.run.arguments=--server.port=8081` if so — the demo script below uses 8081.
+
+### Together with the chat
+
+To reproduce the screencasts above, clone both repos side by side and let the frontend's
+script start the pair:
+
+```bash
+git clone https://github.com/fabianhogger/segnalazioni-impact-lab-be.git segnalazioni_ai
+git clone https://github.com/FlXZ22/impact-lab.git
+cd impact-lab && npm install
+./demo.sh                              # starts this service on 8081 and the chat on 3000
+# or: ANTHROPIC_API_KEY=sk-... ./demo.sh
+```
+
+Then open **http://127.0.0.1:3000**. Without a key both halves still run: this service
+falls back to a keyword classifier that handles the three demo sentences. The chat's
+walkthrough is in its `DEMO.md`.
+
 ## Try it
 
 ```bash
-curl -XPOST localhost:8080/api/v1/reports -H 'Content-Type: application/json' -d '{
+curl -XPOST localhost:8081/api/v1/reports -H 'Content-Type: application/json' -d '{
   "text": "Discarica abusiva di rifiuti ingombranti in Via Paolo Sarpi 12"}'
 ```
 
@@ -152,3 +235,9 @@ code, and it is the file to correct when the Comune tells us we got a competence
 - Dispatch is inline, so a slow SMTP server is a slow HTTP response.
 - H2 on disk and photos on the local filesystem — single instance only.
 - No authentication on the API, and no rate limiting. Required before public exposure.
+- **Italian only.** `nextStep.message` is always Italian, so with the chat's English UI
+  the card shows an English heading over an Italian body — visible in the screencasts
+  above. Fixing it means returning a language-keyed message from here.
+- Two independent Claude classifications run per report (the chat's own triage assessor
+  and this service's classifier). They answer different questions, but unifying them is
+  the obvious next refactor.
