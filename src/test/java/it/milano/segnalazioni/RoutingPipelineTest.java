@@ -96,6 +96,25 @@ class RoutingPipelineTest {
     }
 
     @Test
+    void a_transit_report_located_only_by_station_still_reaches_atm() {
+        // ATM identifies its assets by stop, so a station name is a complete location here.
+        // Before this, such a report bounced back asking for a street and never reached ATM.
+        stub(new Classification(Category.TRASPORTO_PUBBLICO, 0.9, Severity.ROUTINE,
+                "Ascensore fuori servizio",
+                "L'ascensore della stazione M3 Lodi e' fuori servizio.",
+                new LocationHint(null, null, "stazione M3 Lodi", null),
+                List.of(), false));
+
+        var result = intakeService.submit("L'ascensore della stazione M3 Lodi e' rotto da giorni",
+                null, null, null, List.of());
+
+        assertThat(result.report().getStatus()).isEqualTo(ReportStatus.AWAITING_CITIZEN_ACTION);
+        assertThat(result.outcome().agencyId()).isEqualTo("atm");
+        assertThat(result.outcome().action()).isEqualTo(DispatchOutcome.CitizenAction.SUBMIT_FORM);
+        assertThat(result.outcome().prefilledText()).contains("stazione M3 Lodi");
+    }
+
+    @Test
     void an_incomplete_report_stops_and_asks_rather_than_being_filed() {
         stub(new Classification(Category.STRADE, 0.9, Severity.ROUTINE, "Buca", "C'e' una buca.",
                 new LocationHint(null, null, "vicino alla scuola", null),

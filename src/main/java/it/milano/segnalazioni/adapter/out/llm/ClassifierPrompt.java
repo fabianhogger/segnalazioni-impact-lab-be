@@ -48,6 +48,9 @@ final class ClassifierPrompt {
             5. missingInformation: elenca solo cio' che impedisce davvero l'inoltro. Per quasi tutti
                gli enti serve almeno una via. Se il cittadino ha allegato una foto e indicato un
                punto di riferimento riconoscibile, puo' bastare: non chiedere per abitudine.
+               Eccezione: per TRASPORTO_PUBBLICO il nome di una stazione, fermata, linea o
+               capolinea e' gia' una posizione sufficiente, perche' l'azienda identifica i propri
+               impianti per fermata e non per indirizzo. Non chiedere la via in questi casi.
             6. containsThirdPartyPersonalData: true se compaiono nomi, targhe, numeri di interno,
                dati sanitari o altri dati di persone identificabili diverse dal segnalante.
 

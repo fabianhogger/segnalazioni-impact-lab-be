@@ -37,6 +37,13 @@ public class HeuristicClassifier implements Classifier {
                     + "([A-Z][\\p{L}'.\\-]*(?: [A-Z][\\p{L}'.\\-]*){0,3})");
     private static final Pattern CIVIC = Pattern.compile("\\b(?:n\\.?|civico)?\\s*(\\d{1,4}(?:/[A-Za-z])?)\\b");
 
+    // Station names are proper nouns or line codes, so the words after the keyword must start
+    // with a capital or a digit: that stops "stazione M3 Lodi e' rotta" swallowing the verb.
+    private static final Pattern STATION = Pattern.compile(
+            "\\b(?i:stazione|fermata|capolinea|metropolitana|metro)\\s+"
+                    + "(?:[A-Z0-9][\\p{L}0-9'.\\-]*)(?: [A-Z0-9][\\p{L}0-9'.\\-]*){0,2}"
+                    + "|\\bM[1-5]\\b");
+
     private static final List<String> EMERGENCY_WORDS = List.of(
             "incendio", "fiamme", "fuga di gas", "esplosione", "crollo", "crollato",
             "ferito", "ferita", "sangue", "folgorazione", "cavo scoperto", "allagamento");
@@ -52,8 +59,10 @@ public class HeuristicClassifier implements Classifier {
                 "lampioni"));
         KEYWORDS.put(Category.GUASTO_ELETTRICO, List.of("blackout", "black out", "corrente", "senza luce",
                 "contatore", "cabina elettrica"));
+        // "stazione", "banchina" and "scala mobile" are transit-specific; bare "ascensore" is not,
+        // so a broken lift in a block of flats is not mistaken for an ATM asset.
         KEYWORDS.put(Category.TRASPORTO_PUBBLICO, List.of("tram", "metro", "autobus", "bus ", "atm",
-                "bikemi", "fermata", "linea "));
+                "bikemi", "fermata", "linea ", "stazione", "capolinea", "banchina", "scala mobile"));
         KEYWORDS.put(Category.VERDE_PUBBLICO, List.of("albero", "alberi", "ramo", "potatur", "parco",
                 "aiuola", "siepe"));
         KEYWORDS.put(Category.VEICOLI_ABBANDONATI, List.of("auto abbandonat", "veicolo abbandonat",
@@ -98,9 +107,19 @@ public class HeuristicClassifier implements Classifier {
             }
         }
 
+        // ATM identifies its assets by station, not by street address, so a named stop is a
+        // sufficient location for a transit report. Demanding a street here would bounce
+        // exactly the reports ATM is able to act on.
         LocationHint location = extractLocation(text);
+        if (category == Category.TRASPORTO_PUBBLICO && !location.isPreciseEnoughForDispatch()) {
+            Matcher station = STATION.matcher(text);
+            if (station.find()) {
+                location = new LocationHint(null, null, station.group().replaceAll("\\s+", " ").strip(), null);
+            }
+        }
+
         List<String> missing = new ArrayList<>();
-        if (!location.isPreciseEnoughForDispatch()) {
+        if (!location.isPreciseEnoughForDispatch() && location.landmark() == null) {
             missing.add("In quale via o piazza si trova il problema?");
         }
 

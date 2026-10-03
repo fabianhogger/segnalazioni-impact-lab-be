@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: it.milano.segnalazioni.RoutingPipelineTest
 -------------------------------------------------------------------------------
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.044 s -- in it.milano.segnalazioni.RoutingPipelineTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.408 s -- in it.milano.segnalazioni.RoutingPipelineTest

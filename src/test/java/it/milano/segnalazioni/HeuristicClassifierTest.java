@@ -27,6 +27,21 @@ class HeuristicClassifierTest {
     }
 
     @Test
+    void a_named_station_is_location_enough_for_a_transit_report() {
+        var c = classifier.classify("L'ascensore della stazione M3 Lodi e' rotto da giorni", false);
+        assertThat(c.category()).isEqualTo(Category.TRASPORTO_PUBBLICO);
+        assertThat(c.missingInformationOrEmpty()).isEmpty();
+        assertThat(c.location().landmark()).contains("Lodi");
+    }
+
+    @Test
+    void a_station_name_does_not_excuse_a_missing_street_in_other_categories() {
+        var c = classifier.classify("Cassonetti strapieni vicino alla stazione M3 Lodi", false);
+        assertThat(c.category()).isEqualTo(Category.RIFIUTI);
+        assertThat(c.missingInformationOrEmpty()).isNotEmpty();
+    }
+
+    @Test
     void it_flags_danger_words_as_an_emergency() {
         var c = classifier.classify("Incendio in corso al piano terra", false);
         assertThat(c.severity()).isEqualTo(Severity.EMERGENZA);
