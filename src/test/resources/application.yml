@@ -1,0 +1,24 @@
+# Tests get their own in-memory database and attachment directory, so a running
+# dev instance holding the H2 file lock cannot make the suite fail.
+spring:
+  config:
+    import: "classpath:agencies.yml"
+  datasource:
+    url: jdbc:h2:mem:segnalazioni-test;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  # Present only so the mail auto-configuration produces a JavaMailSender bean.
+  # Nothing is sent: dry-run is on below, and the safety tests assert that.
+  mail:
+    host: localhost
+    port: 1025
+
+segnalazioni:
+  attachments:
+    path: ./target/test-attachments
+  dispatch:
+    email:
+      dry-run: true

@@ -1,0 +1,151 @@
+# ---------------------------------------------------------------------------
+# The competence table.
+#
+# This file, not the Java, decides who receives what. It is written to be read
+# and corrected by someone at the Comune who has never opened an IDE.
+#
+# channel values:
+#   API       machine-to-machine. Nothing in Milan offers this yet; see
+#             docs/municipality-handoff.md for what we are asking for.
+#   EMAIL     a monitored mailbox or PEC. The service transmits it itself.
+#   PHONE     a number. The citizen calls; the service writes the script.
+#   WEB_FORM  an online form, usually behind SPID/CIE. The citizen submits.
+#   APP       the body's own mobile app. The citizen submits.
+#
+# Each category must be claimed by exactly one body, or the service refuses to
+# start. That is intentional: an ambiguous competence is a report that goes
+# nowhere, and we would rather find out at boot than in a backlog.
+#
+# SOURCE QUALITY — read before trusting a row. Several targets below were taken
+# from secondary sources and have not been confirmed with the body itself.
+# Rows marked `verified: "no"` must be checked before any real traffic flows.
+# Confirming them is step 1 of the handoff document.
+# ---------------------------------------------------------------------------
+routing:
+  fallback-agency-id: comune-020202
+  low-confidence-agency-id: comune-020202
+
+  agencies:
+
+    - id: comune-portale
+      display-name: "Comune di Milano — Segnalazioni online"
+      channel: WEB_FORM
+      target: "https://www.comune.milano.it/servizi/segnalazioni"
+      requires-photo: true
+      instructions: >-
+        Serve l'accesso con SPID o CIE e un indirizzo preciso. Tieni pronta la foto:
+        per molte categorie e' obbligatoria.
+      categories:
+        - STRADE
+        - PULIZIA_STRADE
+        - ARREDO_URBANO
+        - VERDE_PUBBLICO
+        - CIMITERI
+        - VEICOLI_ABBANDONATI
+        - ILLUMINAZIONE_PUBBLICA
+      metadata:
+        verified: "yes"
+        source: "comune.milano.it reporting centre"
+
+    - id: comune-020202
+      display-name: "Comune di Milano — 020202"
+      channel: PHONE
+      target: "020202"
+      hours: "telefono in orario d'ufficio; assistente WhatsApp 24/7"
+      instructions: >-
+        E' una linea informativa: ti dicono a chi rivolgerti, ma non apre
+        necessariamente una pratica formale.
+      categories:
+        - ALTRO
+      metadata:
+        verified: "partial"
+        note: "Confirmed as an information line. Not confirmed that it files formal reports."
+        whatsapp: "020202"
+
+    - id: polizia-locale
+      display-name: "Polizia Locale di Milano"
+      channel: PHONE
+      target: "020208"
+      hours: "non urgenze"
+      instructions: "Per le emergenze chiama il 112, non questo numero."
+      categories:
+        - SICUREZZA_NON_URGENTE
+      metadata:
+        verified: "no"
+        source: "secondary"
+
+    - id: amsa
+      display-name: "Amsa"
+      channel: PHONE
+      target: "800332299"
+      hours: "24 ore su 24"
+      instructions: >-
+        In alternativa puoi usare l'app PULIamo, che accetta foto per rifiuti,
+        cassonetti pieni, discariche abusive e siringhe abbandonate.
+      categories:
+        - RIFIUTI
+      metadata:
+        verified: "yes"
+        alternative-channel: "APP"
+        alternative-target: "https://www.amsa.it/cittadini/puliamo"
+
+    - id: unareti
+      display-name: "Unareti — guasti rete elettrica"
+      channel: PHONE
+      target: "803500"
+      hours: "24 ore su 24"
+      categories:
+        - GUASTO_ELETTRICO
+      metadata:
+        verified: "no"
+        source: "secondary"
+
+    - id: atm
+      display-name: "ATM — Azienda Trasporti Milanesi"
+      channel: WEB_FORM
+      target: "https://www.atm.it/it/AtmNews/Pagine/Contatti.aspx"
+      sla-days: 10
+      hours: "infoline 02 48 607 607, tutti i giorni 7:30–19:30"
+      categories:
+        - TRASPORTO_PUBBLICO
+      metadata:
+        verified: "yes"
+        phone: "0248607607"
+
+    - id: arpa-lombardia
+      display-name: "ARPA Lombardia (tramite il Comune)"
+      channel: PHONE
+      target: "020202"
+      instructions: >-
+        Per il rumore la competenza e' del Comune, che attiva ARPA sulla base delle
+        segnalazioni dei cittadini.
+      categories:
+        - RUMORE
+        - AMBIENTE
+      metadata:
+        verified: "partial"
+        note: "ARPA runs a regional operations room; its public number was not confirmed."
+
+    - id: comune-senza-dimora
+      display-name: "Comune di Milano — unita' di strada"
+      channel: PHONE
+      target: "0288447646"
+      instructions: >-
+        Attivo soprattutto durante il piano freddo. Se la persona e' in pericolo
+        immediato chiama il 112.
+      categories:
+        - PERSONE_SENZA_DIMORA
+      metadata:
+        verified: "no"
+        source: "secondary"
+
+    # The only body we can currently transmit to without a human in the loop.
+    - id: comune-sos-affitti
+      display-name: "Comune di Milano — SOS Affitti"
+      channel: EMAIL
+      target: "${SOS_AFFITTI_EMAIL:SOSaffitti.segnalazioni@comune.milano.it}"
+      categories:
+        - AFFITTI_IRREGOLARI
+      metadata:
+        verified: "partial"
+        note: "Address confirmed in 2023. Re-confirm it is still monitored before enabling real sends."

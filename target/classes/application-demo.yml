@@ -1,0 +1,11 @@
+# Demo profile: proves the email path end to end against a local Mailpit instance.
+#   docker compose up -d
+#   SOS_AFFITTI_EMAIL=test@localhost mvn spring-boot:run -Dspring-boot.run.profiles=demo
+# Real sending is on, but the only reachable recipient is a mailbox on this machine.
+segnalazioni:
+  dispatch:
+    email:
+      dry-run: false
+      from: "segnalazioni@localhost"
+      allowed-recipients:
+        - "test@localhost"

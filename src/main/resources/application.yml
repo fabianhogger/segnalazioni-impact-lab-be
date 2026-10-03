@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: segnalazioni-ai
+  config:
+    import: "classpath:agencies.yml"
+  datasource:
+    url: jdbc:h2:file:./data/segnalazioni;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 40MB
+  mail:
+    # Local development points at Mailpit (docker compose up -d), so that a "real"
+    # send can be exercised end to end without any mail leaving the machine.
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    properties:
+      mail.smtp.auth: ${MAIL_AUTH:false}
+      mail.smtp.starttls.enable: ${MAIL_STARTTLS:false}
+
+server:
+  port: 8080
+
+segnalazioni:
+  emergency-number: "112"
+  attachments:
+    path: ./data/attachments
+  claude:
+    model: claude-opus-5-5
+    # Classification is short and well specified; LOW keeps latency and cost down.
+    # Raise and measure before assuming more thinking improves routing.
+    effort: low
+  dispatch:
+    email:
+      # Nothing is sent while this is true. Flipping it is a deliberate act.
+      dry-run: ${EMAIL_DRY_RUN:true}
+      from: "segnalazioni@example.org"
+      message-id-domain: "segnalazioni.example.org"
+      allowed-recipients:
+        # Add a real public mailbox here only after confirming with that body that
+        # they expect machine-generated reports. See docs/municipality-handoff.md.
+        - "test@localhost"
+
+logging:
+  level:
+    it.milano.segnalazioni: INFO
